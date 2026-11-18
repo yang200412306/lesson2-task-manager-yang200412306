@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>智能任务管理系统</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">✓</div>
+      <div>
+        <h1>智能任务管理系统</h1>
+        <div class="sub">Node.js + Express + Supabase · 数据存云端，多人共享</div>
+      </div>
+    </div>
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">连接中…</span></div>
+  </header>
+
+  <div id="notice" class="notice">
+    <span>⚠️</span>
+    <div>还没有配置数据库：把 <code>.env.example</code> 改名为 <code>.env</code>，填入 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>，重启服务后刷新本页。</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat panel"><div class="k">总任务</div><div class="v" id="stTotal">0<small>条</small></div></div>
+    <div class="stat panel"><div class="k">已完成</div><div class="v" id="stDone">0<small>条</small></div></div>
+    <div class="stat panel">
+      <div class="k">完成率</div>
+      <div class="v" id="stRate">0<small>%</small></div>
+      <div class="bar"><i id="stBar"></i></div>
+    </div>
+  </div>
+
+  <div class="add panel">
+    <div class="add-row">
+      <div class="field">
+        <input id="title" type="text" maxlength="100" placeholder="要做什么？例如：完成低代码练习二" autocomplete="off" />
+      </div>
+      <select id="priority" aria-label="优先级">
+        <option value="高">高优先级</option>
+        <option value="中" selected>中优先级</option>
+        <option value="低">低优先级</option>
+      </select>
+      <button class="btn-add" id="addBtn">＋ 添加任务</button>
+    </div>
+    <div class="hint">回车也可以快速添加；数据保存在 Supabase，换设备打开看到的是同一份列表。</div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="tab active" data-filter="全部">全部 <span class="n" id="cntAll">0</span></button>
+    <button class="tab" data-filter="高">高优先级 <span class="n" id="cntHigh">0</span></button>
+    <button class="tab" data-filter="中">中优先级 <span class="n" id="cntMid">0</span></button>
+    <button class="tab" data-filter="低">低优先级 <span class="n" id="cntLow">0</span></button>
+  </div>
+
+  <div class="list-head">
+    <span id="listHint">按创建时间倒序</span>
+    <span id="listCount"></span>
+  </div>
+
+  <ul class="tasks" id="list"></ul>
+
+  <div class="empty" id="empty" style="display:none">
+    <div class="ico">🗒️</div>
+    <p>还没有任务</p>
+    <small>在上面输入框写一件要做的事，点“添加任务”开始</small>
+  </div>
+
+  <footer>课堂练习二 · 前端页面 + Express API + Supabase 数据库<br />数据实时落库，刷新不丢、换设备可见</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
+
