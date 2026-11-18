@@ -175,3 +175,6 @@
     .btn-add { width: 100%; }
     select { width: 100%; }
   }
+
+.notice.info { background: #eef4fd; border-color: #cfe0f7; color: #24507f; }
+.notice.info code { border-color: #cfe0f7; }
