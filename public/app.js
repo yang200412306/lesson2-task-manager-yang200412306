@@ -5,7 +5,7 @@ const state = {
   tasks: [],
   filter: '全部',
   loading: true,
-  configured: true
+  storage: 'local'
 };
 
 /* ---------- 小工具 ---------- */
@@ -111,7 +111,8 @@ async function loadTasks(showError) {
     state.tasks = body.data || [];
     state.loading = false;
     render();
-    setStatus(true, '已连接 · ' + state.tasks.length + ' 条任务');
+    const where = state.storage === 'supabase' ? '云端' : '本地';
+    setStatus(true, `已连接 · ${where}存储 · ${state.tasks.length} 条任务`);
   } catch (e) {
     state.loading = false;
     state.tasks = [];
@@ -124,15 +125,9 @@ async function loadTasks(showError) {
 async function checkHealth() {
   try {
     const h = await api('/api/health');
-    state.configured = Boolean(h.supabaseConfigured);
-    $('notice').className = 'notice' + (state.configured ? '' : ' show');
-    if (state.configured) {
-      await loadTasks();
-    } else {
-      state.loading = false;
-      render();
-      setStatus(false, '未配置数据库');
-    }
+    state.storage = h.storage || 'local';
+    $('notice').className = 'notice info' + (state.storage === 'local' ? ' show' : '');
+    await loadTasks();
   } catch (e) {
     state.loading = false;
     render();
@@ -220,6 +215,6 @@ $('list').addEventListener('click', (e) => {
 /* 启动 */
 checkHealth();
 // 每 30 秒自动同步一次，方便课堂演示“多人共享”
-setInterval(() => { if (state.configured && !document.hidden) loadTasks(false); }, 30000);
+setInterval(() => { if (!document.hidden) loadTasks(false); }, 30000);
 
 
