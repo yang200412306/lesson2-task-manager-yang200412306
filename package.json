@@ -1,0 +1,18 @@
+{
+  "name": "task-manager-doubao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "课堂练习二：Node.js + Express + Supabase 智能任务管理系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --env-file-if-exists=.env server.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "express": "^4.21.1"
+  }
+}
