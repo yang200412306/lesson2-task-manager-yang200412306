@@ -1,10 +1,10 @@
 /**
  * Express 应用：页面托管 + 任务 API
- * 本地由 server.js 启动，服务器上同样由 server.js 启动（pm2 托管即可）。
+ * 数据层由 lib/store.js 决定：默认本地 JSON 文件，配好 Supabase 密钥后自动切到云端。
  */
 const path = require('path');
 const express = require('express');
-const { isConfigured, getClient } = require('./lib/db');
+const store = require('./lib/store');
 
 const app = express();
 app.use(express.json({ limit: '100kb' }));
@@ -65,13 +65,13 @@ function readTaskInput(body, { requireTitle }) {
   return patch;
 }
 
-// —— 健康检查：前端靠它判断有没有配好数据库 ——
+// —— 健康检查：前端靠它判断当前是本地存储还是云端存储 ——
 app.get(
   '/api/health',
   wrap(async (req, res) => {
     res.json({
       ok: true,
-      supabaseConfigured: isConfigured(),
+      storage: store.mode(), // local | supabase
       serverTime: new Date().toISOString()
     });
   })
@@ -81,22 +81,9 @@ app.get(
 app.get(
   '/api/tasks',
   wrap(async (req, res) => {
-    const supabase = getClient();
     const priority = req.query.priority;
-
-    let query = supabase
-      .from('tasks')
-      .select('id,title,priority,completed,created_at')
-      .order('created_at', { ascending: false });
-
-    if (priority && PRIORITIES.includes(priority)) {
-      query = query.eq('priority', priority);
-    }
-
-    const { data, error } = await query;
-    if (error) throw Object.assign(new Error(error.message), error);
-
-    res.json({ data: data || [] });
+    const data = await store.list(priority && PRIORITIES.includes(priority) ? priority : null);
+    res.json({ data });
   })
 );
 
@@ -104,17 +91,8 @@ app.get(
 app.post(
   '/api/tasks',
   wrap(async (req, res) => {
-    const supabase = getClient();
     const patch = readTaskInput(req.body, { requireTitle: true });
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([{ title: patch.title, priority: patch.priority || '中' }])
-      .select('id,title,priority,completed,created_at')
-      .single();
-
-    if (error) throw Object.assign(new Error(error.message), error);
-
+    const data = await store.create({ title: patch.title, priority: patch.priority || '中' });
     res.status(201).json({ data });
   })
 );
@@ -123,7 +101,6 @@ app.post(
 app.patch(
   '/api/tasks/:id',
   wrap(async (req, res) => {
-    const supabase = getClient();
     const patch = readTaskInput(req.body, { requireTitle: false });
 
     if (Object.keys(patch).length === 0) {
@@ -132,14 +109,7 @@ app.patch(
       throw err;
     }
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .update(patch)
-      .eq('id', req.params.id)
-      .select('id,title,priority,completed,created_at')
-      .maybeSingle();
-
-    if (error) throw Object.assign(new Error(error.message), error);
+    const data = await store.update(req.params.id, patch);
     if (!data) {
       const err = new Error('任务不存在或已被删除');
       err.status = 404;
@@ -154,22 +124,12 @@ app.patch(
 app.delete(
   '/api/tasks/:id',
   wrap(async (req, res) => {
-    const supabase = getClient();
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', req.params.id)
-      .select('id')
-      .maybeSingle();
-
-    if (error) throw Object.assign(new Error(error.message), error);
+    const data = await store.remove(req.params.id);
     if (!data) {
       const err = new Error('任务不存在或已被删除');
       err.status = 404;
       throw err;
     }
-
     res.json({ ok: true, id: data.id });
   })
 );
@@ -182,12 +142,6 @@ app.use('/api', (req, res) => {
 // 兜底错误处理
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
-
-  // 没配密钥：属于“环境没准备好”，返回 503 而不是 500
-  if (err.code === 'SUPABASE_NOT_CONFIGURED') {
-    return res.status(503).json({ error: err.message, code: err.code });
-  }
-
   const mapped = err.status && err.status < 500 ? { status: err.status, message: err.message } : explain(err);
   if (mapped.status >= 500) console.error('[API ERROR]', err.message);
   res.status(mapped.status).json({ error: mapped.message });
